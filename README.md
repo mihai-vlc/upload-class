@@ -38,6 +38,7 @@ $settings = array(
 		);  
 ```
 Errors and success messages;
+```php
 	var $errors = array(); // will hold the errors
 	var $success = array(); // will hold the success messages
-
+```
