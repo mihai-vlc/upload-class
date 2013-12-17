@@ -2,19 +2,21 @@
 
 
 /**
-* This will allow easy handling of a php upload 
+* This will allow easy handling of a php upload
 * @author: Mihai Ionut Vilcu (ionutvmi@gmail.com)
 * 2-July-2013
 */
 class Upload
 {
-	
+
 	var $settings = array(
 		'folder' => '.', // the folder where the images will be placed
 		'isImage' => 0, // if true it will treat files as images
-		'maxSize' => 2, // the max allowed size in MB
+		'maxSize' => 20, // the max allowed size in MB
 		'allowed_extensions' => array(), // an array of lowercase allowed extensions, (!) IF EMPTY ALL ARE ALLOWED (!)
-		'overwrite' => 0 // if true it will overwrite the file on the server in case it has the same name
+		'overwrite' => 1, // if true it will overwrite the file on the server in case it has the same name
+		'custom_names' => false //  an array of custom names, it will be handeled circullary, if the array ends but there are files to be uploaded it will start from the top
+
 		);
 
 	var $errors = array(); // will hold the errors
@@ -39,14 +41,14 @@ class Upload
 		if(!isset($_FILES[$inputName])) // if we have no file we have nothing to do
 			return false;
 
-		
+
 
 		if(is_array($inputName) || is_object($inputName)) { // multiple input names
 			$result = array();
 
-			foreach ($inputName as $file) 
+			foreach ($inputName as $file)
 				$result[] = $this->handleFiles($file);
-			
+
 			return $result;
 		} else { // single input name
 			return $this->handleFiles($_FILES[$inputName]);
@@ -67,8 +69,9 @@ class Upload
 			return false;
 		}
 
+		$result = array();
+		$i = 0;
 		foreach ($files as $file) {
-			$result = array();
 			$file['name'] = $this->filterFilename($file['name']);
 
 			// if no filename nothing to do
@@ -95,7 +98,15 @@ class Upload
 			}
 
 			// we build the path for upload
-			$upload_path = ltrim($this->settings['folder'], DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$file['name'];
+			if(!empty($this->settings['custom_names'])) {
+				// keep it circular
+				if($i == count($this->settings['custom_names']))
+					$i = 0;
+
+				$upload_path = rtrim($this->settings['folder'], DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$this->settings['custom_names'][$i++];
+			}
+			else
+				$upload_path = rtrim($this->settings['folder'], DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$file['name'];
 
 			// check if the file exists on the server
 			if(!$this->settings['overwrite'] && file_exists($upload_path)){
@@ -114,7 +125,7 @@ class Upload
 
 					// remove uploaded file
 					@unlink($file['tmp_name']);
-				} else 
+				} else
 					$this->errors[] = array($file['name'], "This file is not a valid image !");
 
 
@@ -130,11 +141,11 @@ class Upload
 	}
 
 	/**
-	 * it will rearrange the array with the info about the files generated in $_FILES 
+	 * it will rearrange the array with the info about the files generated in $_FILES
 	 * @author: http://www.php.net/manual/en/features.file-upload.multiple.php#53240
 	 * @edited: Mihai Ionut Vilcu (it will handle one file also)
 	 * @param  array $file_post the $_FILES array
-	 * @return array the new array            
+	 * @return array the new array
 	 */
 	function reArrayFiles(&$file_post) {
 
@@ -166,21 +177,21 @@ class Upload
 	 * @return string                 html code generated
 	 */
 	function generateInput($number = 1, $name = 'file', $complete_form = 0, $location = '?', $extra = array(), $extra_form = array()) {
-		
+
 		$html = $attr = $attr_form = "";
-		
+
 		foreach ($extra as $key => $value)
 			$attr .= " $key = '$value' ";
 		foreach ($extra_form as $key => $value)
 			$attr_form .= " $key = '$value' ";
-		
+
 
 		for($i = 0; $i < $number; $i++)
-			$html .= "File ".($i+1)." 
+			$html .= "File ".($i+1)."
 			<input type='file' name='$name".($number > 1 ? "[]" : "")."'$attr>
 			<br/>
 			";
-		
+
 		if($complete_form == 1)
 			$html = "<form action='$location' method='post' enctype='multipart/form-data' $attr_form>
 			".$html."
@@ -189,7 +200,7 @@ class Upload
 		return $html;
 
 	}
-	
+
 
 	/**
 	 * gets the max file size for upload allowed on the server in MB
@@ -215,41 +226,41 @@ class Upload
 	 * @param  integer $code the error code
 	 * @return string       error message
 	 */
-	function codeToMessage($code) { 
-	    switch ($code) { 
-	        case UPLOAD_ERR_INI_SIZE: 
-	            $message = "The uploaded file exceeds the upload_max_filesize directive in php.ini"; 
-	            break; 
-	        case UPLOAD_ERR_FORM_SIZE: 
-	            $message = "The uploaded file exceeds the MAX_FILE_SIZE directive that was specified in the HTML form"; 
-	            break; 
-	        case UPLOAD_ERR_PARTIAL: 
-	            $message = "The uploaded file was only partially uploaded"; 
-	            break; 
-	        case UPLOAD_ERR_NO_FILE: 
-	            $message = "No file was uploaded"; 
-	            break; 
-	        case UPLOAD_ERR_NO_TMP_DIR: 
-	            $message = "Missing a temporary folder"; 
-	            break; 
-	        case UPLOAD_ERR_CANT_WRITE: 
-	            $message = "Failed to write file to disk"; 
-	            break; 
-	        case UPLOAD_ERR_EXTENSION: 
-	            $message = "File upload stopped by extension"; 
-	            break; 
+	function codeToMessage($code) {
+	    switch ($code) {
+	        case UPLOAD_ERR_INI_SIZE:
+	            $message = "The uploaded file exceeds the upload_max_filesize directive in php.ini";
+	            break;
+	        case UPLOAD_ERR_FORM_SIZE:
+	            $message = "The uploaded file exceeds the MAX_FILE_SIZE directive that was specified in the HTML form";
+	            break;
+	        case UPLOAD_ERR_PARTIAL:
+	            $message = "The uploaded file was only partially uploaded";
+	            break;
+	        case UPLOAD_ERR_NO_FILE:
+	            $message = "No file was uploaded";
+	            break;
+	        case UPLOAD_ERR_NO_TMP_DIR:
+	            $message = "Missing a temporary folder";
+	            break;
+	        case UPLOAD_ERR_CANT_WRITE:
+	            $message = "Failed to write file to disk";
+	            break;
+	        case UPLOAD_ERR_EXTENSION:
+	            $message = "File upload stopped by extension";
+	            break;
 
-	        default: 
-	            $message = "Unknown upload error"; 
-	            break; 
-	    } 
-	    return $message; 
-	} 	
+	        default:
+	            $message = "Unknown upload error";
+	            break;
+	    }
+	    return $message;
+	}
 
 	/**
 	 * makes sure that the settings are updated and correct
 	 * @param  array $settings new settings
-	 * @return void           
+	 * @return void
 	 */
 	function updateSettings($settings) {
 		$this->settings = array_merge($this->settings, $settings);
@@ -260,7 +271,7 @@ class Upload
 	/**
 	 * will create an image from a file
 	 * @credits: http://www.php.net/manual/en/function.imagecreate.php#81831
-	 * @edited: Mihai Ionut Vilcu (ionutvmi@gmail.com) - added $fun 
+	 * @edited: Mihai Ionut Vilcu (ionutvmi@gmail.com) - added $fun
 	 * @param  string  $path           path to the file
 	 * @param  string $fun it will hold the function required for adding image data in the file
 	 * @param  boolean $user_functions if true you need to have defined a function imagecreatefrombmp you can find one http://www.php.net/manual/en/function.imagecreatefromwbmp.php#86214
@@ -269,12 +280,12 @@ class Upload
 	function imagecreatefromfile($path, &$fun, $user_functions = false)
 	{
 	    $info = @getimagesize($path);
-	    
+
 	    if(!$info)
 	    {
 	        return false;
 	    }
-	    
+
 	    $functions = array(
 	        IMAGETYPE_GIF => 'imagecreatefromgif',
 	        IMAGETYPE_JPEG => 'imagecreatefromjpeg',
@@ -282,29 +293,29 @@ class Upload
 	        IMAGETYPE_WBMP => 'imagecreatefromwbmp',
 	        IMAGETYPE_XBM => 'imagecreatefromwxbm',
 	        );
-	    
+
 	    if($user_functions)
 	    {
 	        $functions[IMAGETYPE_BMP] = 'imagecreatefrombmp';
 	    }
-	    
+
 	    if(!$functions[$info[2]])
 	    {
 	        return false;
 	    }
-	    
+
 	    if(!function_exists($functions[$info[2]]))
 	    {
 	        return false;
 	    }
 	    $fun = str_replace("createfrom", "", $functions[$info[2]]);
-	    
+
 	    $targetImage = $functions[$info[2]]($path);
 	    // fix for png transparency
 		imagealphablending( $targetImage, false );
 		imagesavealpha( $targetImage, true );
 		return $targetImage;
-	}	
+	}
 
 }
 
